@@ -51,12 +51,12 @@
 
     if (tipo === "logista") {
       whatsapp = prompt("Digite seu WhatsApp (ex: 87999999999):");
-      set(ref(db, usuarios/${nome}), { tipo, whatsapp });
+      set(ref(db, `usuarios/${nome}`), { tipo, whatsapp });
       set(ref(db, "logista_atual"), { nome, whatsapp });
-      infoDiv.innerHTML = 🧾 Você é <strong>LOGISTA</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>;
+      infoDiv.innerHTML = `🧾 Você é <strong>LOGISTA</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>`;
     } else {
-      set(ref(db, usuarios/${nome}), { tipo });
-      infoDiv.innerHTML = 🧾 Você é <strong>ENTREGADOR</strong>;
+      set(ref(db, `usuarios/${nome}`), { tipo });
+      infoDiv.innerHTML = `🧾 Você é <strong>ENTREGADOR</strong>`;
     }
 
     const container = document.getElementById("chat-container");
@@ -74,7 +74,7 @@
       const msg = snapshot.val();
       const div = document.createElement("div");
       div.className = "message" + (msg.nome === nome ? " self" : "");
-      div.innerHTML = <strong>${msg.nome}:</strong> ${msg.texto};
+      div.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
     });
@@ -99,7 +99,7 @@
           if (logistaSnap.exists()) {
             const logista = logistaSnap.val();
             if (logista && logista.whatsapp) {
-              infoDiv.innerHTML += <br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>;
+              infoDiv.innerHTML += `<br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
             } else {
               alert("⚠️ Nenhum WhatsApp de logista disponível.");
             }

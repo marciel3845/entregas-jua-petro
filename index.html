@@ -44,18 +44,19 @@
     const chatRef = ref(db, "chats/" + sala);
     const userRef = ref(db, "usuarios");
 
-    // Coletar dados do usuário
     const tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
     const nome = prompt("Digite seu nome:");
-    const whatsapp = prompt("Digite seu WhatsApp (ex: 87999999999):");
+    let whatsapp = "";
+
+    if (tipo === "logista") {
+      whatsapp = prompt("Digite seu WhatsApp (ex: 87999999999):");
+      set(ref(db, `usuarios/${nome}`), { tipo, whatsapp });
+    } else {
+      set(ref(db, `usuarios/${nome}`), { tipo });
+    }
+
     const infoDiv = document.getElementById("user-info");
-
-    // Salvar dados no banco
-    set(ref(db, `usuarios/${nome}`), {
-      tipo, whatsapp
-    });
-
-    infoDiv.innerHTML = `🧾 Você é <strong>${tipo.toUpperCase()}</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>`;
+    infoDiv.innerHTML = `🧾 Você é <strong>${tipo.toUpperCase()}</strong>` + (whatsapp ? ` — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>` : "");
 
     const container = document.getElementById("chat-container");
     const input = document.getElementById("msg");

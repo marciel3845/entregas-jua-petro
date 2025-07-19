@@ -1,67 +1,21 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>EntregaFácil JuáPetro</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #fff;
-      margin: 0;
-    }
-    header {
-      background: #c00;
-      padding: 15px;
-      text-align: center;
-      font-size: 1.5rem;
-    }
-    #chat-container {
-      height: 65vh;
-      overflow-y: auto;
-      padding: 10px;
-    }
-    .message {
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 10px;
-      background: #222;
-    }
-    .self {
-      background: #c00;
-    }
-    #message-input {
-      display: flex;
-      padding: 10px;
-      background: #000;
-    }
-    #message-input input {
-      flex: 1;
-      padding: 10px;
-      font-size: 1rem;
-      border: none;
-      border-radius: 10px 0 0 10px;
-    }
-    #message-input button {
-      background: #c00;
-      color: white;
-      font-weight: bold;
-      border: none;
-      padding: 10px;
-      border-radius: 0 10px 10px 0;
-      cursor: pointer;
-    }
-    #info {
-      text-align: center;
-      padding: 10px;
-      background: #222;
-      display: none;
-    }
+    body { background: #111; color: #fff; font-family: Arial, sans-serif; margin: 0; }
+    header { background: #c00; padding: 15px; text-align: center; font-size: 1.5rem; }
+    #chat-container { height: 65vh; overflow-y: auto; padding: 10px; }
+    .message { padding: 10px; margin: 8px 0; border-radius: 10px; background: #222; }
+    .self { background: #c00; }
+    #message-input { display: flex; padding: 10px; background: #000; }
+    #message-input input { flex: 1; padding: 10px; font-size: 1rem; border: none; border-radius: 10px 0 0 10px; }
+    #message-input button { background: #c00; color: white; font-weight: bold; border: none; padding: 10px; border-radius: 0 10px 10px 0; cursor: pointer; }
   </style>
 </head>
 <body>
-  <header>🚚 EntregaFácil JuáPetro</header>
-  <div id="info"></div>
+  <header>🚚 EntregaFácil JuáPetro - Chat Geral</header>
   <div id="chat-container"></div>
   <div id="message-input">
     <input id="msg" placeholder="Digite sua mensagem..." />
@@ -70,7 +24,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, set, get, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA6bglXoLtD-__wgXryBpytXL2Ps8oS1p4",
@@ -84,23 +38,19 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const chatRef = ref(db, "chats/geral");
 
-    const params = new URLSearchParams(location.search);
-    let sala = params.get("sala") || "geral";
+    const tipo = prompt("Você é logista ou entregador?").toLowerCase();
     const nome = prompt("Digite seu nome:");
     const container = document.getElementById("chat-container");
-    const infoDiv = document.getElementById("info");
+    let jaEnviou = false;
 
-    const chatRef = ref(db, "chats/" + sala);
-
-    // Mostrar WhatsApp se tiver na entrega
-    if (sala !== "geral") {
-      const entregaRef = ref(db, "entregas/" + sala);
-      get(entregaRef).then(snapshot => {
-        const dados = snapshot.val();
-        if (dados && dados.whatsapp) {
-          infoDiv.innerHTML = `📞 WhatsApp da loja: <a href="https://wa.me/55${dados.whatsapp}" target="_blank">${dados.whatsapp}</a>`;
-          infoDiv.style.display = "block";
+    // Verifica se o entregador já enviou mensagem
+    if (tipo === "entregador") {
+      const statusRef = ref(db, "limites/" + nome);
+      get(statusRef).then(snap => {
+        if (snap.exists()) {
+          jaEnviou = true;
         }
       });
     }
@@ -118,25 +68,21 @@
       const input = document.getElementById("msg");
       const texto = input.value.trim();
 
-      if (texto) {
-        push(chatRef, { nome, texto });
+      if (!texto) return;
 
-        if (texto.toLowerCase() === "eu" && sala === "geral") {
-          const entregaId = prompt("Digite o nome da entrega (ex: centro-loja):");
-          const whatsapp = prompt("Digite o WhatsApp da loja (ex: 87999999999):");
-
-          if (entregaId && whatsapp) {
-            const novaSala = "chat_" + entregaId;
-            set(ref(db, "entregas/" + novaSala), {
-              nomeLoja: nome,
-              whatsapp
-            });
-            window.location.href = "?sala=" + novaSala;
-          }
-        }
-
-        input.value = "";
+      if (tipo === "entregador" && jaEnviou) {
+        alert("Você só pode enviar uma mensagem por entrega.");
+        return;
       }
+
+      push(chatRef, { nome, texto });
+
+      if (tipo === "entregador") {
+        set(ref(db, "limites/" + nome), true);
+        jaEnviou = true;
+      }
+
+      input.value = "";
     };
   </script>
 </body>

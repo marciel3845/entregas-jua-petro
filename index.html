@@ -49,8 +49,10 @@
     const input = document.getElementById("msg");
     let jaEnviou = false;
     let avatarBase64 = "";
+    let nome = "";
+    let tipo = "";
 
-    // Solicita imagem de perfil antes de iniciar
+    // Upload da imagem de perfil
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = "image/*";
@@ -68,9 +70,9 @@
       reader.readAsDataURL(file);
     });
 
-    function iniciarChat() {
-      const tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
-      const nome = prompt("Digite seu nome:");
+    async function iniciarChat() {
+      tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
+      nome = prompt("Digite seu nome:");
 
       if (tipo === "logista") {
         const whatsapp = prompt("Digite seu WhatsApp:");
@@ -80,11 +82,11 @@
       } else {
         set(ref(db, `usuarios/${nome}`), { tipo });
         infoDiv.innerHTML = `🧾 Você é <strong>ENTREGADOR</strong>`;
-        get(ref(db, "limites/" + nome)).then(snap => {
-          if (snap.exists()) jaEnviou = true;
-        });
+        const snap = await get(ref(db, "limites/" + nome));
+        if (snap.exists()) jaEnviou = true;
       }
 
+      // Exibir mensagens
       onChildAdded(chatRef, (snapshot) => {
         const msg = snapshot.val();
         const div = document.createElement("div");
@@ -97,6 +99,7 @@
         container.scrollTop = container.scrollHeight;
       });
 
+      // Envio de mensagens
       window.sendMessage = async () => {
         const texto = input.value.trim();
         if (!texto) return;
@@ -108,11 +111,13 @@
 
         push(chatRef, { nome, texto, avatar: avatarBase64 });
 
+        // Regras ao digitar "eu"
         if (tipo === "entregador" && texto.toLowerCase() === "eu") {
           const firstRef = ref(db, "primeiro_entregador");
           const res = await get(firstRef);
+
           if (!res.exists()) {
-            set(firstRef, nome);
+            set(firstRef, nome); // marca como o primeiro entregador
             const logistaSnap = await get(ref(db, "logista_atual"));
             if (logistaSnap.exists()) {
               const logista = logistaSnap.val();
@@ -121,6 +126,7 @@
               }
             }
           }
+
           set(ref(db, "limites/" + nome), true);
           jaEnviou = true;
         }

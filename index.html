@@ -96,9 +96,15 @@
         if (!res.exists()) {
           set(firstRef, nome);
           const logistaSnap = await get(ref(db, "logista_atual"));
-          const logista = logistaSnap.val();
-          if (logista && logista.whatsapp) {
-            infoDiv.innerHTML += `<br><br>📞 WhatsApp do logista: <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
+          if (logistaSnap.exists()) {
+            const logista = logistaSnap.val();
+            if (logista && logista.whatsapp) {
+              infoDiv.innerHTML += `<br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
+            } else {
+              alert("⚠️ Nenhum WhatsApp de logista disponível.");
+            }
+          } else {
+            alert("⚠️ Nenhum logista ativo encontrado.");
           }
         }
         set(ref(db, "limites/" + nome), true);

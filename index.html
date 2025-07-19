@@ -6,16 +6,18 @@
   <style>
     body { background: #111; color: #fff; font-family: Arial, sans-serif; margin: 0; }
     header { background: #c00; padding: 15px; text-align: center; font-size: 1.5rem; }
-    #chat-container { height: 65vh; overflow-y: auto; padding: 10px; }
+    #chat-container { height: 60vh; overflow-y: auto; padding: 10px; }
     .message { padding: 10px; margin: 8px 0; border-radius: 10px; background: #222; }
     .self { background: #c00; }
     #message-input { display: flex; padding: 10px; background: #000; }
     #message-input input { flex: 1; padding: 10px; font-size: 1rem; border: none; border-radius: 10px 0 0 10px; }
     #message-input button { background: #c00; color: white; font-weight: bold; border: none; padding: 10px; border-radius: 0 10px 10px 0; cursor: pointer; }
+    #user-info { background: #222; padding: 10px; text-align: center; }
   </style>
 </head>
 <body>
   <header>🚚 EntregaFácil JuáPetro - Chat Geral</header>
+  <div id="user-info"></div>
   <div id="chat-container"></div>
   <div id="message-input">
     <input id="msg" placeholder="Digite sua mensagem..." />
@@ -38,14 +40,27 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const chatRef = ref(db, "chats/geral");
+    const sala = "geral";
+    const chatRef = ref(db, "chats/" + sala);
+    const userRef = ref(db, "usuarios");
 
-    const tipo = prompt("Você é logista ou entregador?").toLowerCase();
+    // Coletar dados do usuário
+    const tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
     const nome = prompt("Digite seu nome:");
-    const container = document.getElementById("chat-container");
-    let jaEnviou = false;
+    const whatsapp = prompt("Digite seu WhatsApp (ex: 87999999999):");
+    const infoDiv = document.getElementById("user-info");
 
-    // Verifica se o entregador já enviou mensagem
+    // Salvar dados no banco
+    set(ref(db, `usuarios/${nome}`), {
+      tipo, whatsapp
+    });
+
+    infoDiv.innerHTML = `🧾 Você é <strong>${tipo.toUpperCase()}</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>`;
+
+    const container = document.getElementById("chat-container");
+    const input = document.getElementById("msg");
+
+    let jaEnviou = false;
     if (tipo === "entregador") {
       const statusRef = ref(db, "limites/" + nome);
       get(statusRef).then(snap => {
@@ -65,9 +80,7 @@
     });
 
     window.sendMessage = () => {
-      const input = document.getElementById("msg");
       const texto = input.value.trim();
-
       if (!texto) return;
 
       if (tipo === "entregador" && jaEnviou) {

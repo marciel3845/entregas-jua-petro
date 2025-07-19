@@ -7,10 +7,8 @@
     body { background: #111; color: #fff; font-family: Arial, sans-serif; margin: 0; }
     header { background: #c00; padding: 15px; text-align: center; font-size: 1.5rem; }
     #chat-container { height: 60vh; overflow-y: auto; padding: 10px; }
-    .message { display: flex; align-items: flex-start; gap: 10px; padding: 10px; margin: 8px 0; border-radius: 10px; background: #222; }
+    .message { padding: 10px; margin: 8px 0; border-radius: 10px; background: #222; }
     .self { background: #c00; }
-    .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-    .text { flex: 1; }
     #message-input { display: flex; padding: 10px; background: #000; }
     #message-input input { flex: 1; padding: 10px; font-size: 1rem; border: none; border-radius: 10px 0 0 10px; }
     #message-input button { background: #c00; color: white; font-weight: bold; border: none; padding: 10px; border-radius: 0 10px 10px 0; cursor: pointer; }
@@ -44,98 +42,77 @@
     const db = getDatabase(app);
     const sala = "geral";
     const chatRef = ref(db, "chats/" + sala);
+    const userRef = ref(db, "usuarios");
+
+    const tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
+    const nome = prompt("Digite seu nome:");
+    let whatsapp = "";
     const infoDiv = document.getElementById("user-info");
+
+    if (tipo === "logista") {
+      whatsapp = prompt("Digite seu WhatsApp (ex: 87999999999):");
+      set(ref(db, usuarios/${nome}), { tipo, whatsapp });
+      set(ref(db, "logista_atual"), { nome, whatsapp });
+      infoDiv.innerHTML = 🧾 Você é <strong>LOGISTA</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>;
+    } else {
+      set(ref(db, usuarios/${nome}), { tipo });
+      infoDiv.innerHTML = 🧾 Você é <strong>ENTREGADOR</strong>;
+    }
+
     const container = document.getElementById("chat-container");
     const input = document.getElementById("msg");
     let jaEnviou = false;
-    let avatarBase64 = "";
-    let nome = "";
-    let tipo = "";
 
-    // Upload da imagem de perfil
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*";
-    fileInput.style = "margin: 10px; display: block;";
-    document.body.insertBefore(fileInput, document.getElementById("chat-container"));
-    alert("Selecione sua foto de perfil:");
+    if (tipo === "entregador") {
+      const statusRef = ref(db, "limites/" + nome);
+      get(statusRef).then(snap => {
+        if (snap.exists()) jaEnviou = true;
+      });
+    }
 
-    const reader = new FileReader();
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files[0];
-      reader.onloadend = () => {
-        avatarBase64 = reader.result;
-        iniciarChat();
-      };
-      reader.readAsDataURL(file);
+    onChildAdded(chatRef, (snapshot) => {
+      const msg = snapshot.val();
+      const div = document.createElement("div");
+      div.className = "message" + (msg.nome === nome ? " self" : "");
+      div.innerHTML = <strong>${msg.nome}:</strong> ${msg.texto};
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
     });
 
-    async function iniciarChat() {
-      tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
-      nome = prompt("Digite seu nome:");
+    window.sendMessage = async () => {
+      const texto = input.value.trim();
+      if (!texto) return;
 
-      if (tipo === "logista") {
-        const whatsapp = prompt("Digite seu WhatsApp:");
-        set(ref(db, `usuarios/${nome}`), { tipo, whatsapp });
-        set(ref(db, "logista_atual"), { nome, whatsapp });
-        infoDiv.innerHTML = `🧾 Você é <strong>LOGISTA</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>`;
-      } else {
-        set(ref(db, `usuarios/${nome}`), { tipo });
-        infoDiv.innerHTML = `🧾 Você é <strong>ENTREGADOR</strong>`;
-        const snap = await get(ref(db, "limites/" + nome));
-        if (snap.exists()) jaEnviou = true;
+      if (tipo === "entregador" && jaEnviou) {
+        alert("Você só pode enviar uma mensagem por entrega.");
+        return;
       }
 
-      // Exibir mensagens
-      onChildAdded(chatRef, (snapshot) => {
-        const msg = snapshot.val();
-        const div = document.createElement("div");
-        div.className = "message" + (msg.nome === nome ? " self" : "");
-        div.innerHTML = `
-          <img class="avatar" src="${msg.avatar || ''}" />
-          <div class="text"><strong>${msg.nome}:</strong> ${msg.texto}</div>
-        `;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-      });
+      push(chatRef, { nome, texto });
 
-      // Envio de mensagens
-      window.sendMessage = async () => {
-        const texto = input.value.trim();
-        if (!texto) return;
-
-        if (tipo === "entregador" && jaEnviou) {
-          alert("Você só pode enviar uma mensagem por entrega.");
-          return;
-        }
-
-        push(chatRef, { nome, texto, avatar: avatarBase64 });
-
-        // Regras ao digitar "eu"
-        if (tipo === "entregador" && texto.toLowerCase() === "eu") {
-          const firstRef = ref(db, "primeiro_entregador");
-          const res = await get(firstRef);
-
-          if (!res.exists()) {
-            set(firstRef, nome); // marca como o primeiro entregador
-            const logistaSnap = await get(ref(db, "logista_atual"));
-            if (logistaSnap.exists()) {
-              const logista = logistaSnap.val();
-              if (logista && logista.whatsapp) {
-                setTimeout(() => {
-                  infoDiv.innerHTML += `<br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
-                }, 1000);
-              }
+      if (tipo === "entregador" && texto.toLowerCase() === "eu") {
+        const firstRef = ref(db, "primeiro_entregador");
+        const res = await get(firstRef);
+        if (!res.exists()) {
+          set(firstRef, nome);
+          const logistaSnap = await get(ref(db, "logista_atual"));
+          if (logistaSnap.exists()) {
+            const logista = logistaSnap.val();
+            if (logista && logista.whatsapp) {
+              infoDiv.innerHTML += <br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>;
+            } else {
+              alert("⚠️ Nenhum WhatsApp de logista disponível.");
             }
+          } else {
+            alert("⚠️ Nenhum logista ativo encontrado.");
           }
-
-          set(ref(db, "limites/" + nome), true);
-          jaEnviou = true;
         }
+        set(ref(db, "limites/" + nome), true);
+        jaEnviou = true;
+      }
 
-        input.value = "";
-      };
-    }
+      input.value = "";
+    };
   </script>
 </body>
 </html>

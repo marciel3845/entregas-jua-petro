@@ -42,32 +42,32 @@
     const db = getDatabase(app);
     const sala = "geral";
     const chatRef = ref(db, "chats/" + sala);
-    const userRef = ref(db, "usuarios");
 
     const tipo = prompt("Você é LOGISTA ou ENTREGADOR?").toLowerCase();
     const nome = prompt("Digite seu nome:");
     let whatsapp = "";
 
+    const infoDiv = document.getElementById("user-info");
+
     if (tipo === "logista") {
       whatsapp = prompt("Digite seu WhatsApp (ex: 87999999999):");
       set(ref(db, `usuarios/${nome}`), { tipo, whatsapp });
+      set(ref(db, "logista_atual"), { nome, whatsapp });
+      infoDiv.innerHTML = `🧾 Você é <strong>LOGISTA</strong> — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>`;
     } else {
       set(ref(db, `usuarios/${nome}`), { tipo });
+      infoDiv.innerHTML = `🧾 Você é <strong>ENTREGADOR</strong>`;
     }
-
-    const infoDiv = document.getElementById("user-info");
-    infoDiv.innerHTML = `🧾 Você é <strong>${tipo.toUpperCase()}</strong>` + (whatsapp ? ` — WhatsApp: <a href="https://wa.me/55${whatsapp}" target="_blank">${whatsapp}</a>` : "");
 
     const container = document.getElementById("chat-container");
     const input = document.getElementById("msg");
-
     let jaEnviou = false;
+    let pvMostrado = false;
+
     if (tipo === "entregador") {
       const statusRef = ref(db, "limites/" + nome);
       get(statusRef).then(snap => {
-        if (snap.exists()) {
-          jaEnviou = true;
-        }
+        if (snap.exists()) jaEnviou = true;
       });
     }
 
@@ -78,6 +78,19 @@
       div.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
+
+      // Se entregador digitar "eu", salvar e mostrar o WhatsApp do logista
+      if (tipo === "entregador" && msg.nome === nome && msg.texto.toLowerCase() === "eu" && !pvMostrado) {
+        set(ref(db, "limites/" + nome), true);
+        jaEnviou = true;
+        get(ref(db, "logista_atual")).then(snapshot => {
+          const logista = snapshot.val();
+          if (logista && logista.whatsapp) {
+            infoDiv.innerHTML += `<br><br>📞 WhatsApp do logista: <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
+            pvMostrado = true;
+          }
+        });
+      }
     });
 
     window.sendMessage = () => {
@@ -91,7 +104,7 @@
 
       push(chatRef, { nome, texto });
 
-      if (tipo === "entregador") {
+      if (tipo === "entregador" && texto.toLowerCase() === "eu") {
         set(ref(db, "limites/" + nome), true);
         jaEnviou = true;
       }

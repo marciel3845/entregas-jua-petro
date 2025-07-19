@@ -2,137 +2,117 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EntregaFácil JuáPetro</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #1e1e1e;
+      background-color: #111;
       color: #fff;
       margin: 0;
       padding: 0;
     }
-    .chat-container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
+    header {
+      background-color: #c00;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.8rem;
+    }
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+      padding: 10px;
+      overflow-y: auto;
     }
     .message {
+      background: #222;
+      margin: 6px 0;
       padding: 10px;
-      margin-bottom: 10px;
       border-radius: 10px;
-      background-color: #333;
+      word-wrap: break-word;
     }
-    .logista {
-      background-color: #d62828;
+    .message.self {
+      background: #c00;
     }
-    .entregador {
-      background-color: #003049;
-    }
-    .sistema {
-      background-color: #6a4c93;
-    }
-    .message small {
-      display: block;
-      color: #bbb;
-      font-size: 0.75rem;
-    }
-    #messages, #privateMessages {
-      height: 300px;
-      overflow-y: scroll;
-      border: 1px solid #444;
+    #message-input {
+      display: flex;
       padding: 10px;
-      background-color: #111;
-      margin-bottom: 10px;
+      background: #000;
     }
-    input, button, select {
+    #message-input input {
+      flex: 1;
       padding: 10px;
-      margin: 5px;
-      border-radius: 5px;
       border: none;
+      border-radius: 10px 0 0 10px;
+      font-size: 1rem;
     }
-    button {
-      background-color: #f77f00;
-      color: white;
+    #message-input button {
+      background: #c00;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 0 10px 10px 0;
       cursor: pointer;
-    }
-    #privateChat {
-      display: none;
-      margin-top: 30px;
+      color: #fff;
+      font-weight: bold;
     }
   </style>
+</head>
+<body>
+  <header>🚚 EntregaFácil JuáPetro - Chat</header>
+  <div id="chat-container"></div>
+  <div id="message-input">
+    <input id="msg" placeholder="Digite sua mensagem..." />
+    <button onclick="sendMessage()">Enviar</button>
+  </div>
+
+  <!-- Firebase SDKs -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA6bglXoLtD-__wgXryBpytXL2Ps8oS1p4",
       authDomain: "entregas-jua-petro.firebaseapp.com",
       databaseURL: "https://entregas-jua-petro-default-rtdb.firebaseio.com",
       projectId: "entregas-jua-petro",
-      storageBucket: "entregas-jua-petro.firebasestorage.app",
+      storageBucket: "entregas-jua-petro.appspot.com",
       messagingSenderId: "740486676027",
-      appId: "1:740486676027:web:0e650af00a5f2a0eb5a61e",
-      measurementId: "G-XC3W9TE2B1"
+      appId: "1:740486676027:web:e5182f4b7e3f4e65e9ba4d"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get("sala") || "geral";
+    const nome = prompt("Digite seu nome:");
 
-    let username = "";
-    let role = "";
-    let selectedDeliveries = {};
-    let currentPrivate = null;
+    const chatContainer = document.getElementById("chat-container");
 
-    window.login = () => {
-      username = document.getElementById("username").value;
-      role = document.getElementById("role").value;
-      if (username && role) {
-        document.getElementById("chat").style.display = "block";
-        document.getElementById("username").disabled = true;
-        document.getElementById("role").disabled = true;
-        document.querySelector("button").disabled = true;
-      }
-    };
+    onChildAdded(ref(db, `chats/${room}`), (data) => {
+      const msg = data.val();
+      const div = document.createElement("div");
+      div.className = "message" + (msg.nome === nome ? " self" : "");
+      div.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
+      chatContainer.appendChild(div);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
 
     window.sendMessage = () => {
-      const text = document.getElementById("msg").value;
-      const timestamp = new Date().toLocaleTimeString();
-      push(ref(db, 'messages'), {
-        username,
-        role,
-        text,
-        timestamp
-      });
-      document.getElementById("msg").value = "";
-    };
+      const input = document.getElementById("msg");
+      const texto = input.value.trim();
+      if (texto) {
+        push(ref(db, `chats/${room}`), {
+          nome,
+          texto
+        });
+        input.value = "";
 
-    onChildAdded(ref(db, 'messages'), (data) => {
-      const { username: user, role: r, text, timestamp } = data.val();
-      const messageBox = document.createElement("div");
-      messageBox.className = `message ${r}`;
-      messageBox.innerHTML = `<strong>${user}</strong><br>${text}<small>${timestamp}</small>`;
-      document.getElementById("messages").appendChild(messageBox);
-      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-    });
+        if (texto.toLowerCase() === "eu" && room === "geral") {
+          window.location.href = "?sala=" + nome.replace(/\s+/g, "") + "_privado";
+        }
+      }
+    };
   </script>
-</head>
-<body>
-  <div class="chat-container">
-    <h2>EntregaFácil JuáPetro - Chat Geral</h2>
-    <div>
-      <input id="username" placeholder="Seu nome" />
-      <select id="role">
-        <option value="logista">Logista</option>
-        <option value="entregador">Entregador</option>
-      </select>
-      <button onclick="login()">Entrar</button>
-    </div>
-    <div id="chat" style="display:none">
-      <div id="messages"></div>
-      <input id="msg" placeholder="Digite sua mensagem..." />
-      <button onclick="sendMessage()">Enviar</button>
-    </div>
-  </div>
 </body>
 </html>

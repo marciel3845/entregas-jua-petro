@@ -122,7 +122,9 @@
             if (logistaSnap.exists()) {
               const logista = logistaSnap.val();
               if (logista && logista.whatsapp) {
-                infoDiv.innerHTML += `<br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
+                setTimeout(() => {
+                  infoDiv.innerHTML += `<br><br><strong>📱 WhatsApp do logista:</strong> <a href="https://wa.me/55${logista.whatsapp}" target="_blank">${logista.whatsapp}</a>`;
+                }, 1000);
               }
             }
           }

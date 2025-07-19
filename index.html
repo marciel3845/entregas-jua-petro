@@ -61,6 +61,61 @@
       margin-top: 30px;
     }
   </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA6bglXoLtD-__wgXryBpytXL2Ps8oS1p4",
+      authDomain: "entregas-jua-petro.firebaseapp.com",
+      databaseURL: "https://entregas-jua-petro-default-rtdb.firebaseio.com",
+      projectId: "entregas-jua-petro",
+      storageBucket: "entregas-jua-petro.firebasestorage.app",
+      messagingSenderId: "740486676027",
+      appId: "1:740486676027:web:0e650af00a5f2a0eb5a61e",
+      measurementId: "G-XC3W9TE2B1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let username = "";
+    let role = "";
+    let selectedDeliveries = {};
+    let currentPrivate = null;
+
+    window.login = () => {
+      username = document.getElementById("username").value;
+      role = document.getElementById("role").value;
+      if (username && role) {
+        document.getElementById("chat").style.display = "block";
+        document.getElementById("username").disabled = true;
+        document.getElementById("role").disabled = true;
+        document.querySelector("button").disabled = true;
+      }
+    };
+
+    window.sendMessage = () => {
+      const text = document.getElementById("msg").value;
+      const timestamp = new Date().toLocaleTimeString();
+      push(ref(db, 'messages'), {
+        username,
+        role,
+        text,
+        timestamp
+      });
+      document.getElementById("msg").value = "";
+    };
+
+    onChildAdded(ref(db, 'messages'), (data) => {
+      const { username: user, role: r, text, timestamp } = data.val();
+      const messageBox = document.createElement("div");
+      messageBox.className = `message ${r}`;
+      messageBox.innerHTML = `<strong>${user}</strong><br>${text}<small>${timestamp}</small>`;
+      document.getElementById("messages").appendChild(messageBox);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    });
+  </script>
 </head>
 <body>
   <div class="chat-container">
@@ -78,75 +133,6 @@
       <input id="msg" placeholder="Digite sua mensagem..." />
       <button onclick="sendMessage()">Enviar</button>
     </div>
-    <div id="privateChat">
-      <h3>Chat Privado com Logista</h3>
-      <div id="privateMessages"></div>
-      <input id="privateMsg" placeholder="Mensagem privada..." />
-      <button onclick="sendPrivateMessage()">Enviar</button>
-    </div>
   </div>
-
-  <script>
-    let username = "";
-    let role = "";
-    let selectedDeliveries = {}; // {entregaTexto: {entregador: nome, logista: nome}}
-    let currentPrivate = null;
-
-    function login() {
-      username = document.getElementById("username").value;
-      role = document.getElementById("role").value;
-      if(username && role) {
-        document.getElementById("chat").style.display = "block";
-        document.getElementById("username").disabled = true;
-        document.getElementById("role").disabled = true;
-        document.querySelector("button").disabled = true;
-      }
-    }
-
-    function sendMessage() {
-      const msgInput = document.getElementById("msg");
-      const text = msgInput.value;
-      const timestamp = new Date().toLocaleTimeString();
-      const messageBox = document.createElement("div");
-      messageBox.className = `message ${role}`;
-      messageBox.innerHTML = `<strong>${username}</strong><br>${text}<small>${timestamp}</small>`;
-      document.getElementById("messages").appendChild(messageBox);
-
-      if (role === "logista" && text.toLowerCase().includes("x")) {
-        selectedDeliveries[text] = { entregador: null, logista: username };
-      }
-
-      if (role === "entregador" && text.trim().toLowerCase() === "eu") {
-        const lastDelivery = Object.keys(selectedDeliveries).reverse().find(key => selectedDeliveries[key].entregador === null);
-        if (lastDelivery && !Object.values(selectedDeliveries).some(d => d.entregador === username)) {
-          selectedDeliveries[lastDelivery].entregador = username;
-          const aviso = document.createElement("div");
-          aviso.className = "message sistema";
-          aviso.innerHTML = `<strong>SISTEMA</strong><br>${username} pegou a entrega: ${lastDelivery}<br><em>Chat privado aberto com ${selectedDeliveries[lastDelivery].logista}</em><small>${timestamp}</small>`;
-          document.getElementById("messages").appendChild(aviso);
-
-          if (selectedDeliveries[lastDelivery].logista) {
-            currentPrivate = selectedDeliveries[lastDelivery].logista;
-            document.getElementById("privateChat").style.display = "block";
-          }
-        }
-      }
-
-      msgInput.value = "";
-      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-    }
-
-    function sendPrivateMessage() {
-      const pMsg = document.getElementById("privateMsg");
-      const text = pMsg.value;
-      const timestamp = new Date().toLocaleTimeString();
-      const msgBox = document.createElement("div");
-      msgBox.className = "message sistema";
-      msgBox.innerHTML = `<strong>${username} (Privado)</strong><br>${text}<small>${timestamp}</small>`;
-      document.getElementById("privateMessages").appendChild(msgBox);
-      pMsg.value = "";
-      document.getElementById("privateMessages").scrollTop = document.getElementById("privateMessages").scrollHeight;
-    }
-  </script>
 </body>
 </html>
